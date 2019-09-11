@@ -9,6 +9,7 @@
  :realm #or [#env REALM "localhost"]
 
  :slack-hook #env SLACK_HOOK
+ :rankings-api-url #or [#env RANKINGS_API_URL "http://localhost:5001"]
  :admin-password #or [#env ADMIN_PASSWORD "secret"]
  ;; this is only defined when running on Heroku
  :git-commit #env HEROKU_SLUG_COMMIT
