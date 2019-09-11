@@ -24,6 +24,7 @@
             [ring.middleware.gzip :refer [wrap-gzip]]
             [ring.util.response]
             [ring.util.http-response :as resp]
+            [clj-http.client :as http]
             [taoensso.sente :as sente]
             [taoensso.timbre :as timbre :refer [log info debug]])
   (:import (java.util UUID)))
@@ -50,6 +51,8 @@
     (map? m) (uuid-to-str m)
     (sequential? m) (map uuid-to-str m)
     :else m))
+
+(def rankings-api-url (value :rankings-api-url))
 
 (defn- as-edn
   [response]
@@ -85,9 +88,9 @@
 (defn add-game!
   [{:keys [params]}]
   (notifications/notify-slack (format-game params))
+
   (let [validated (validate/conform-data :game params)
         game-id (db/add-game! validated)]
-
     (encode
      (resp/created "/api/games"
                    {:id game-id}))))
@@ -121,6 +124,13 @@
   (-> request
       :params
       :league_id
+      validate/to-uuid))
+
+(defn- get-game-id
+  [request]
+  (-> request
+      :params
+      :game_id
       validate/to-uuid))
 
 (defn get-players
@@ -166,6 +176,15 @@
       resp/ok
       encode))
 
+(defn get-rankings
+  [request]
+  (if (uuid? (read-string (format "#uuid \"%s\"" (get-in request [:params :game_id]))))
+      (let [league-id (get-league-id request)
+            game-id (get-game-id request)
+            rankings (db/load-rankings league-id game-id)]
+      (if (empty? rankings) (encode (resp/ok (get-in (json/read-str (get (http/get rankings-api-url {:query-params {"league_id" league-id, "game_id" game-id }}) :body "{}")) ["data" "rankings"]))) (encode (resp/ok rankings))))
+      (encode (resp/bad-request "Invalid or no game_id param"))))
+
 (defn github-callback
   [request]
   (encode
@@ -192,6 +211,7 @@
                 "leagues" get-leagues
                 "companies" get-companies
                 "players" get-players
+                "rankings" get-rankings
                 "games" get-games}
 
         "oauth2/github/callback" github-callback

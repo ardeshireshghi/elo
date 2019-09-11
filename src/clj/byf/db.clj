@@ -4,6 +4,8 @@
             [environ.core :refer [env]]
             [honeysql-postgres.helpers :as ph]
             [honeysql.core :as sql]
+            [byf.validate :as validate]
+            [cheshire.core :as json]
             [honeysql.helpers :as h])
 
   (:import (java.util UUID)))
@@ -65,6 +67,13 @@
   (-> (h/select :*)
       (h/from [:users])))
 
+(defn load-rankings-sql
+  [league-id game-id]
+  (-> (h/select :rankings)
+      (h/from :rankings)
+      (h/where [:= :league_id league-id])
+      (h/where [:= :game_id game-id])))
+
 (defn load-league-sql
   [league-id]
   (-> (h/select :*)
@@ -91,6 +100,11 @@
 (defn load-companies [] (query load-companies-sql))
 
 (defn load-users [] (query load-users-sql))
+
+(defn load-rankings
+  [league-id game-id]
+  (let [rankings (get (get-single load-rankings-sql league-id game-id) :rankings)]
+  (if (nil? rankings) () (json/decode (.getValue rankings)))))
 
 (defn- store-sql
   [params]
