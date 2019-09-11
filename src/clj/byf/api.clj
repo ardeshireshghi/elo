@@ -143,7 +143,7 @@
 (defn get-games*
   [league-id]
   (map
-   #(select-keys % [:p1 :p1_points :p1_using
+   #(select-keys % [:id :p1 :p1_points :p1_using
                     :p2 :p2_points :p2_using
                     :played_at])
    (db/load-games league-id)))
